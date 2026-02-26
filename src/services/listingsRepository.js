@@ -20,13 +20,13 @@ export function parseRevyDetailUrl(url) {
 }
 
 /**
- * Manuel ilan ekle (Revy linki ile). Stub kayıt: source=manual, parse_status=pending.
- * Şema ile uyumlu sadece gerekli kolonlar gönderilir.
+ * Manuel ilan ekle (Revy linki ile). Stub kayıt: manual=true, parse_status=pending.
  * @param {string} revyDetailUrl - Revy ilan detay URL'si
  * @param {string} [initialNote] - Opsiyonel ilk not
+ * @param {object} [formData] - Opsiyonel form alanları: title, price, description, category
  * @returns {{ success: boolean, duplicate?: boolean, listingId?: string, error?: string }}
  */
-export async function addManualListing(revyDetailUrl, initialNote) {
+export async function addManualListing(revyDetailUrl, initialNote, formData = {}) {
   const parsed = parseRevyDetailUrl(revyDetailUrl)
   if (!parsed.valid) {
     return { success: false, error: parsed.error }
@@ -35,69 +35,113 @@ export async function addManualListing(revyDetailUrl, initialNote) {
   const { revyId } = parsed
   const listingUrl = revyDetailUrl.trim()
 
-  // external_id zorunlu (Revy ID)
   if (!revyId) {
     return { success: false, error: 'Revy ilan ID\'si alınamadı' }
   }
 
   try {
-    // Duplicate: aynı external_id ile revy veya manual kayıt varsa tekrar ekleme
-    const { data: existingRevy } = await supabase
+    // Duplicate: aynı listing_url zaten varsa tekrar ekleme
+    const { data: existing } = await supabase
       .from('listings')
       .select('id')
-      .eq('source', 'revy')
-      .eq('external_id', revyId)
-      .maybeSingle()
-    const { data: existingManual } = await supabase
-      .from('listings')
-      .select('id')
-      .eq('source', 'manual')
-      .eq('external_id', revyId)
+      .eq('listing_url', listingUrl)
       .maybeSingle()
 
-    if (existingRevy || existingManual) {
+    if (existing) {
       return { success: false, duplicate: true, error: 'Bu ilan zaten sistemde mevcut' }
     }
 
-    // Insert: DB şemasına uyumlu kolonlar (parse_status, source, external_id)
-    const stub = {
+    const payload = {
       listing_url: listingUrl,
-      source: 'manual',
       external_id: revyId,
+      source: 'manual',
       parse_status: 'pending',
-      title: 'İlan (yükleniyor)'
+      title: formData.title ?? null,
+      price: formData.price ? Number(formData.price) || null : null,
+      description: formData.description ?? null,
+      property_category: formData.category ?? null,
+      manual: true,
+      priority: true
     }
+
+    console.log('FORM DATA:', formData)
+    console.log('INSERT PAYLOAD:', payload)
 
     const { data: inserted, error: insertError } = await supabase
       .from('listings')
-      .insert(stub)
-      .select('id')
-      .single()
+      .insert([payload])
+      .select()
+
+    console.log('[listingsRepository] insert result:', { inserted, insertError })
 
     if (insertError) {
-      if (import.meta.env.DEV) console.warn('[listingsRepository] addManualListing insert:', insertError)
-      // PGRST204 vb. kullanıcıya Toast ile gösterilsin
+      console.error('[listingsRepository] addManualListing insert error:', insertError)
       return { success: false, error: insertError.message || 'İlan eklenirken hata oluştu' }
     }
 
-    const listingId = inserted?.id
-    if (import.meta.env.DEV && listingId) console.log('[listingsRepository] addManualListing inserted id:', listingId)
+    const listingId = Array.isArray(inserted) ? inserted[0]?.id : inserted?.id
 
-    if (initialNote && initialNote.trim()) {
+    if (listingId && initialNote?.trim()) {
       const { error: noteError } = await supabase.from('notes').insert({
         listing_id: listingId,
         note_text: initialNote.trim(),
         is_completed: false
       })
-      if (noteError && import.meta.env.DEV) {
-        console.warn('[listingsRepository] addManualListing note:', noteError)
-      }
+      if (noteError) console.error('[listingsRepository] addManualListing note error:', noteError)
     }
 
     return { success: true, listingId }
   } catch (err) {
-    if (import.meta.env.DEV) console.warn('[listingsRepository] addManualListing', err)
+    console.error('[listingsRepository] addManualListing exception:', err)
     return { success: false, error: err.message || 'Beklenmeyen hata' }
+  }
+}
+
+export async function fetchManualListings() {
+  try {
+    const { data, error } = await supabase
+      .from('listings')
+      .select('*')
+      .eq('manual', true)
+      .order('created_at', { ascending: false })
+      .limit(50)
+
+    if (error) {
+      console.error('[listingsRepository] fetchManualListings error:', error)
+      return []
+    }
+    return data || []
+  } catch (err) {
+    console.error('[listingsRepository] fetchManualListings exception:', err)
+    return []
+  }
+}
+
+/**
+ * Tek ilan detayı getir (ID ile). Manuel ilanlar dahil tüm ilanlar.
+ * @param {string} listingId - UUID
+ * @returns {{ data: object|null, error: object|null }}
+ */
+export async function fetchListingById(listingId) {
+  const id = typeof listingId === 'string' ? listingId : String(listingId)
+  console.log('[listingsRepository] fetchListingById listingId:', id)
+
+  try {
+    const { data, error } = await supabase
+      .from('listings')
+      .select('*')
+      .eq('id', id)
+      .single()
+
+    if (error) {
+      console.error('[listingsRepository] fetchListingById error:', error)
+      return { data: null, error }
+    }
+    console.log('[listingsRepository] fetchListingById fetched data:', data)
+    return { data, error: null }
+  } catch (err) {
+    console.error('[listingsRepository] fetchListingById exception:', err)
+    return { data: null, error: err }
   }
 }
 

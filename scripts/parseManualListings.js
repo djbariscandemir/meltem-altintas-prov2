@@ -38,17 +38,67 @@ function delay(ms) {
   return new Promise(resolve => setTimeout(resolve, ms))
 }
 
-/** Tüm pending ilanları getir (LIMIT yok) */
+/** Öncelikli pending ilanları getir (priority=true, limit 5). Kolon yoksa [] döner. */
+async function getPriorityListings() {
+  try {
+    const { data, error } = await supabase
+      .from('listings')
+      .select('id, listing_url, external_id')
+      .eq('parse_status', 'pending')
+      .eq('priority', true)
+      .not('listing_url', 'is', null)
+      .order('created_at', { ascending: true })
+      .limit(5)
+
+    if (error) {
+      if (String(error.message || '').includes('priority') || String(error.message || '').includes('column')) {
+        return []
+      }
+      console.error('[parseManualListings] getPriorityListings:', error.message)
+      return []
+    }
+    return data || []
+  } catch (err) {
+    console.error('[parseManualListings] getPriorityListings:', err.message)
+    return []
+  }
+}
+
+/** Normal pending ilanları getir (priority=false veya null). Kolon yoksa tüm pending. */
 async function getPendingListings() {
+  try {
+    const { data, error } = await supabase
+      .from('listings')
+      .select('id, listing_url, external_id')
+      .eq('parse_status', 'pending')
+      .not('listing_url', 'is', null)
+      .or('priority.eq.false,priority.is.null')
+      .order('created_at', { ascending: true })
+
+    if (error) {
+      if (String(error.message || '').includes('priority') || String(error.message || '').includes('column')) {
+        return getPendingListingsFallback()
+      }
+      console.error('[parseManualListings] getPendingListings:', error.message)
+      return []
+    }
+    return data || []
+  } catch (err) {
+    console.error('[parseManualListings] getPendingListings:', err.message)
+    return []
+  }
+}
+
+/** priority kolonu yoksa: tüm pending ilanları getir */
+async function getPendingListingsFallback() {
   const { data, error } = await supabase
     .from('listings')
     .select('id, listing_url, external_id')
     .eq('parse_status', 'pending')
     .not('listing_url', 'is', null)
     .order('created_at', { ascending: true })
-
   if (error) {
-    console.error('[parseManualListings] getPendingListings:', error.message)
+    console.error('[parseManualListings] getPendingListingsFallback:', error.message)
     return []
   }
   return data || []
@@ -195,14 +245,21 @@ async function parseDetailPage(page, listingUrl) {
   return { title, price, rooms, net_area, image_urls }
 }
 
-/** Başarılı parse: parse_status = 'parsed', title, price, cover_image_url, image_urls güncelle */
-async function markParsed(listingId, payload) {
+/** Başarılı parse: parse_status = 'parsed', priority = false, title, price, cover_image_url, image_urls güncelle */
+async function markParsed(listingId, payload, wasPriority = false) {
   const update = {
     parse_status: 'parsed',
     parse_error: null,
+    ...(wasPriority ? { priority: false } : {}),
     ...payload
   }
-  const { error } = await supabase.from('listings').update(update).eq('id', listingId)
+  let { error } = await supabase.from('listings').update(update).eq('id', listingId)
+  if (error && (String(error.message || '').includes('priority') || String(error.message || '').includes('column'))) {
+    const { priority, ...rest } = update
+    const { error: err2 } = await supabase.from('listings').update(rest).eq('id', listingId)
+    if (err2) throw new Error(err2.message)
+    return
+  }
   if (error) throw new Error(error.message)
 }
 
@@ -216,46 +273,19 @@ async function markFailed(listingId, errorMessage) {
   if (error) console.error('[parseManualListings] markFailed:', error.message)
 }
 
-async function main() {
-  const pending = await getPendingListings()
-  const pendingCount = pending.length
+const IDLE_DELAY_MIN_SEC = 20
+const IDLE_DELAY_MAX_SEC = 60
 
-  if (pendingCount === 0) {
-    console.log('[parseManualListings] Bekleyen ilan yok.')
-    console.log('================= [parseManualListings] ÖZET =================')
-    console.log('Pending bulundu: 0')
-    console.log('Başarılı: 0')
-    console.log('Failed: 0')
-    console.log('[parseManualListings] Bitti.')
-    return
-  }
-
-  console.log(`[parseManualListings] ${pendingCount} adet pending ilan işlenecek.`)
-
-  const browser = await chromium.launch({
-    headless: true,
-    args: ['--disable-blink-features=AutomationControlled', '--no-sandbox']
-  })
-
-  const contextOptions = { viewport: { width: 1366, height: 768 } }
-  if (existsSync(STORAGE_STATE_PATH)) {
-    contextOptions.storageState = STORAGE_STATE_PATH
-    console.log('[parseManualListings] Revy storage state kullanılıyor.')
-  }
-  const dir = dirname(STORAGE_STATE_PATH)
-  if (!existsSync(dir)) mkdirSync(dir, { recursive: true })
-
-  const context = await browser.newContext(contextOptions)
-  const page = await context.newPage()
-
+/** Tek batch işle (priority veya normal pending) */
+async function processBatch(page, listings, isPriority) {
   let successCount = 0
   let failedCount = 0
 
-  for (let i = 0; i < pending.length; i++) {
-    const row = pending[i]
+  for (let i = 0; i < listings.length; i++) {
+    const row = listings[i]
     const { id, listing_url } = row
 
-    console.log(`[START] listing id: ${id}`)
+    console.log(`${isPriority ? '[PRIORITY]' : '[NORMAL]'} Processing listing id: ${id}`)
 
     try {
       if (!listing_url) {
@@ -298,7 +328,7 @@ async function main() {
         payload.cover_image_url = parsed.image_urls[0]
       }
 
-      await markParsed(id, payload)
+      await markParsed(id, payload, isPriority)
       successCount++
       console.log(`[SUCCESS] listing id: ${id} (title: ${parsed.title ? 'var' : 'yok'}, images: ${(parsed.image_urls || []).length})`)
     } catch (err) {
@@ -316,23 +346,107 @@ async function main() {
       console.log(`[END] listing id: ${id}`)
     }
 
-    if (i < pending.length - 1) {
+    if (i < listings.length - 1) {
       await delay(DELAY_BETWEEN_LISTINGS_MS)
     }
   }
 
-  await context.close()
-  await browser.close()
+  return { successCount, failedCount }
+}
 
-  console.log('================= [parseManualListings] ÖZET =================')
-  console.log(`Pending bulundu: ${pendingCount}`)
-  console.log(`Başarılı: ${successCount}`)
-  console.log(`Failed: ${failedCount}`)
-  console.log(`Toplam işlenen: ${successCount + failedCount}`)
-  console.log('[parseManualListings] Bitti.')
+/**
+ * One iteration: process priority or pending batch. No idle delay. Exported for worker.js.
+ * @returns {'priority'|'normal'|'none'} - what was processed (for worker delay logic)
+ */
+export async function processPendingListings() {
+  const priority = await getPriorityListings()
+  const pending = await getPendingListings()
+  const hasPriority = priority.length > 0
+  const hasPending = pending.length > 0
+  if (!hasPriority && !hasPending) return 'none'
+
+  const browser = await chromium.launch({
+    headless: true,
+    args: ['--disable-blink-features=AutomationControlled', '--no-sandbox']
+  })
+  const contextOptions = { viewport: { width: 1366, height: 768 } }
+  if (existsSync(STORAGE_STATE_PATH)) {
+    contextOptions.storageState = STORAGE_STATE_PATH
+    console.log('[parseManualListings] Revy storage state kullanılıyor.')
+  }
+  const dir = dirname(STORAGE_STATE_PATH)
+  if (!existsSync(dir)) mkdirSync(dir, { recursive: true })
+  const context = await browser.newContext(contextOptions)
+  const page = await context.newPage()
+  try {
+    if (hasPriority) {
+      console.log(`[PRIORITY] ${priority.length} adet ilan işlenecek (hemen).`)
+      await processBatch(page, priority, true)
+      return 'priority'
+    }
+    console.log(`[NORMAL] ${pending.length} adet ilan işlenecek.`)
+    await processBatch(page, pending, false)
+    return 'normal'
+  } finally {
+    await browser.close()
+  }
+}
+
+async function runWorkerLoop() {
+  const browser = await chromium.launch({
+    headless: true,
+    args: ['--disable-blink-features=AutomationControlled', '--no-sandbox']
+  })
+
+  const contextOptions = { viewport: { width: 1366, height: 768 } }
+  if (existsSync(STORAGE_STATE_PATH)) {
+    contextOptions.storageState = STORAGE_STATE_PATH
+    console.log('[parseManualListings] Revy storage state kullanılıyor.')
+  }
+  const dir = dirname(STORAGE_STATE_PATH)
+  if (!existsSync(dir)) mkdirSync(dir, { recursive: true })
+
+  const context = await browser.newContext(contextOptions)
+  const page = await context.newPage()
+
+  let totalSuccess = 0
+  let totalFailed = 0
+
+  while (true) {
+    const priority = await getPriorityListings()
+    const hasPriority = priority.length > 0
+
+    if (hasPriority) {
+      console.log(`[parseManualListings] ${priority.length} adet ÖNCELİKLİ ilan işlenecek.`)
+      const { successCount, failedCount } = await processBatch(page, priority, true)
+      totalSuccess += successCount
+      totalFailed += failedCount
+      continue
+    }
+
+    const pending = await getPendingListings()
+    const hasPending = pending.length > 0
+
+    if (hasPending) {
+      console.log(`[parseManualListings] ${pending.length} adet normal pending ilan işlenecek.`)
+      const { successCount, failedCount } = await processBatch(page, pending, false)
+      totalSuccess += successCount
+      totalFailed += failedCount
+      continue
+    }
+
+    const idleSec = randomInt(IDLE_DELAY_MIN_SEC, IDLE_DELAY_MAX_SEC)
+    console.log(`[parseManualListings] Bekleyen ilan yok. ${idleSec}s sonra tekrar kontrol edilecek.`)
+    await delay(idleSec * 1000)
+  }
+}
+
+async function main() {
+  console.log('[parseManualListings] Worker başlatıldı. Sürekli çalışacak.')
+  await runWorkerLoop()
 }
 
 main().catch(e => {
   console.error('[parseManualListings] Beklenmeyen hata:', e)
-  process.exit(0)
+  process.exit(1)
 })

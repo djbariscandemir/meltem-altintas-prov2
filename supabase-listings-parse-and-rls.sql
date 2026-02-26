@@ -28,6 +28,12 @@ BEGIN
     ALTER TABLE public.listings ADD COLUMN external_id TEXT;
     RAISE NOTICE 'listings.external_id eklendi';
   END IF;
+
+  -- priority: manuel ilanlar hemen işlensin (true), işlendikten sonra false
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'listings' AND column_name = 'priority') THEN
+    ALTER TABLE public.listings ADD COLUMN priority BOOLEAN DEFAULT false;
+    RAISE NOTICE 'listings.priority eklendi';
+  END IF;
 END $$;
 
 -- 2) UNIQUE: (source, external_id) — revy ve manual çakışmasın
@@ -45,6 +51,9 @@ CREATE INDEX IF NOT EXISTS idx_listings_parse_status
 
 CREATE INDEX IF NOT EXISTS idx_listings_external_id
   ON public.listings (external_id) WHERE external_id IS NOT NULL;
+
+CREATE INDEX IF NOT EXISTS idx_listings_priority
+  ON public.listings (priority) WHERE priority = true;
 
 -- 4) RLS: listings INSERT sadece admin / broker
 -- -----------------------------------------------------------------------------

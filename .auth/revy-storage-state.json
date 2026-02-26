@@ -25,7 +25,7 @@
       "value": "fb.2.1769166942090.865418754839603225",
       "domain": ".revy.com.tr",
       "path": "/",
-      "expires": 1779217546,
+      "expires": 1779912205,
       "httpOnly": false,
       "secure": false,
       "sameSite": "Lax"
@@ -52,41 +52,41 @@
     },
     {
       "name": "IDE",
-      "value": "AHWqTUkh00b26fEHNcnurKMqWJXr_QjbzGNekFULldnRjrFnFmhxZEUrMRE4Pci_",
+      "value": "AHWqTUmKw_zVqUL-fi_XHOre35W5vGQ8HbkWc3C8oBIme3zwfBfGwJ0LbnRNOB8e",
       "domain": ".doubleclick.net",
       "path": "/",
-      "expires": 1805889204.521523,
+      "expires": 1806696206.064771,
       "httpOnly": true,
       "secure": true,
       "sameSite": "None"
     },
     {
-      "name": "_ga_PF7LMG1RQ3",
-      "value": "GS2.1.s1771441535$o8$g1$t1771441546$j49$l0$h0",
-      "domain": ".revy.com.tr",
-      "path": "/",
-      "expires": 1806001546.734304,
-      "httpOnly": false,
-      "secure": false,
-      "sameSite": "Lax"
-    },
-    {
       "name": "XSRF-TOKEN",
-      "value": "eyJpdiI6Im05azY5WkUyRTczMkI2aU9UNzVcL0RnPT0iLCJ2YWx1ZSI6IlRtY1hGS0hscERzQTBaalN5Y3dYUGR6MWVMRWM3cVNKVW02T2plZXB3TnI5b1FcLzdqNW12Y0ZlMGR0NWxTZlBxc3ZDMHA2d21jVEtISGVDcEw5VjkwUW5CV3k4RDNvdW9DbnVOTmFcL0hGbUN1OFU1N1wvN2RnQTI1eEYyU2Q5ekd3IiwibWFjIjoiZjBkNjYzNTY3M2FjMmJkYjU5YWEwMzM4YmIzZTU5ZGQ2ZjM0YTRjMTQ2YWIyOGJiMmQyZmVlYjZlYWI2ZjRmNiJ9",
+      "value": "eyJpdiI6ImY2b3hQdEx3RkZEejMrcnJlSllmMkE9PSIsInZhbHVlIjoiSzhrSnErelV3YkZcL0VtZlc3cERDd2w4cWRiZUdMa3RFUm1sb0NWSDJjQ3JTVVZxQkNVRkxHRlRISkVBYjY2YlpXS21nS1YzcWNYRTRrUFJ0SXVVblFQK3VwUjBqNlFQTTJYNlJxVnpoWWtERDJ3a3hLd0hnd2xSaTBlVlZmY0RwIiwibWFjIjoiNGZiNGZjMjc3NmY3OThhNTFkY2I5OWJiMjAyYzYyMGUyZjRhNzVlMjNhZmE1ZWQwYTU4YTU3YWI5YzFhMWQ4NiJ9",
       "domain": "www.revy.com.tr",
       "path": "/",
-      "expires": 1771448747.015282,
+      "expires": 1772143413.999457,
       "httpOnly": false,
       "secure": false,
       "sameSite": "Lax"
     },
     {
       "name": "revy_session",
-      "value": "eyJpdiI6InBlOXZiWms0RWg3aTlRSWdCWEZjQ1E9PSIsInZhbHVlIjoibStFYXNZOHRUdnRjM1JQN2U2aEJWZUl2RXlsaFlLeHcyYnZWTU5nMW1IaVlNVmZPeDVYKzJ5Q3JndXZvcnFLdmtPYWdWTDE3SzVtTWplVjVtNENSTHFKcCtoT3RDNVRcL3hqSzR5cWNKTFZFNnMza3laMWpTalFBNW1lMEd4blhMIiwibWFjIjoiZDRiOWIzM2NjNTc3ZTVkYTQzNTk5YzU1MmNlNzdlNDUxOTMyZDUyMTMxMWJhNDg3YmQwZjFiYzk5NzE0OGMxYSJ9",
+      "value": "eyJpdiI6IlF3TlJJVjRnXC9CdFVVaHZzbWJ5WTZRPT0iLCJ2YWx1ZSI6IlFjZ2JmOGd4T1Z5Q21CbEVmUUticVUwSGZlcWtPN0hyeXZ2XC9aZ01IUmtpWEZJWTFLMStPZkJqYlJcL0l4REdZWlA2Z2ZQaVlCMUNyXC84S0xldG5jKzBrOTFXMUtcL2h4bU1EZGE4TVhMUUttbTBCNjVcL2JHNXZ6RnpBRUVFbEhUdFgiLCJtYWMiOiI2Y2YxMzQ1OGI0OTIzMTRhMmMxMzdjMWVlMWY0YzRiNmMzMzIzNTVkZWExY2FiOWZlNTM1OTYxZmNkNzkxYzBjIn0%3D",
       "domain": "www.revy.com.tr",
       "path": "/",
-      "expires": 1771448747.015518,
+      "expires": 1772143413.999689,
       "httpOnly": true,
+      "secure": false,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "_ga_PF7LMG1RQ3",
+      "value": "GS2.1.s1772136203$o9$g1$t1772136214$j49$l0$h0",
+      "domain": ".revy.com.tr",
+      "path": "/",
+      "expires": 1806696214.011216,
+      "httpOnly": false,
       "secure": false,
       "sameSite": "Lax"
     }
@@ -101,11 +101,11 @@
         },
         {
           "name": "_gcl_ls",
-          "value": "{\"schema\":\"gcl\",\"version\":1,\"gcl_ctr\":{\"value\":{\"value\":2,\"timeouts\":0,\"creationTimeMs\":1771441544479},\"expires\":1779217544479}}"
+          "value": "{\"schema\":\"gcl\",\"version\":1,\"gcl_ctr\":{\"value\":{\"value\":3,\"timeouts\":0,\"creationTimeMs\":1772136212812},\"expires\":1779912212812}}"
         },
         {
           "name": "lastExternalReferrerTime",
-          "value": "1771441537618"
+          "value": "1772136205751"
         }
       ]
     }

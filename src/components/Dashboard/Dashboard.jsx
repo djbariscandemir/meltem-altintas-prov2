@@ -130,7 +130,11 @@ function Dashboard({
         )}
 
         {currentView === VIEWS.ADD_LISTING && (
-          <AddListing onSuccess={() => onUpdateListings()} />
+          <AddListing
+            user={user}
+            onSuccess={() => onUpdateListings()}
+            onUpdateListings={onUpdateListings}
+          />
         )}
 
         {currentView === VIEWS.TODAY_TASKS && (

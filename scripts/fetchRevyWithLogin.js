@@ -1282,6 +1282,11 @@ async function uploadListingImages(page, listing, existing = null) {
 
 // ========== SUPABASE İŞLEMLERİ ==========
 
+function isActiveColumnError(err) {
+  const msg = err?.message || '';
+  return msg.includes('is_active') && (msg.includes('does not exist') || msg.includes('column'));
+}
+
 async function checkIfListingExists(listingId, listingUrl) {
   if (listingId) {
     const { data } = await supabase
@@ -1584,12 +1589,22 @@ async function upsertListing(listing, existing = null) {
       console.log(`[STATUS] uploaded=${hasUploadedImages ? (newHasImages ? newImageUrls.length : existingImageUrls.length) : 0}, attempts=${newAttempts} → ${statusResult.status.toUpperCase()} (${statusResult.reason})`);
       
       if (Object.keys(updates).length > 0) {
-        const { error } = await supabase
-          .from('listings')
-          .update(updates)
-          .eq('id', existing.id);
-        
-        if (error) throw error;
+        let payload = { ...updates };
+        let triedWithoutIsActive = false;
+        while (true) {
+          const { error } = await supabase
+            .from('listings')
+            .update(payload)
+            .eq('id', existing.id);
+          if (!error) break;
+          if (!triedWithoutIsActive && isActiveColumnError(error)) {
+            console.warn('[UPSERT] is_active kolonu listings tablosunda yok. is_active guncellenmeyecek. supabase-add-listing-fields.sql calistirin.');
+            delete payload.is_active;
+            triedWithoutIsActive = true;
+            continue;
+          }
+          throw error;
+        }
         
         const statusMsg = updates.parse_status?.toUpperCase() || existing.parse_status?.toUpperCase() || 'UNKNOWN';
         console.log(`✅ Supabase'e güncellendi: listing_id=${listing.listing_id || 'N/A'}, status=${statusMsg}, attempts=${updates.parse_attempts || existing.parse_attempts || 0}`);
@@ -1640,18 +1655,32 @@ async function upsertListing(listing, existing = null) {
         parse_status: finalStatus,
         parse_attempts: newAttempts,
         last_parse_at: now,
-        next_retry_at: nextRetry
+        next_retry_at: nextRetry,
+        manual: false // Scraper'dan eklenen ilanlar
       };
       
-      const { data, error } = await supabase
-        .from('listings')
-        .upsert(newListing, {
-          onConflict: conflictKey
-        })
-        .select()
-        .single();
-      
-      if (error) throw error;
+      let payload = { ...newListing };
+      let triedWithoutIsActive = false;
+      let data, error;
+      while (true) {
+        const result = await supabase
+          .from('listings')
+          .upsert(payload, {
+            onConflict: conflictKey
+          })
+          .select()
+          .single();
+        data = result.data;
+        error = result.error;
+        if (!error) break;
+        if (!triedWithoutIsActive && isActiveColumnError(error)) {
+          console.warn('[UPSERT] is_active kolonu listings tablosunda yok. is_active eklenmeyecek. supabase-add-listing-fields.sql calistirin.');
+          delete payload.is_active;
+          triedWithoutIsActive = true;
+          continue;
+        }
+        throw error;
+      }
       console.log(`✅ Supabase'e yazıldı: listing_id=${listing.listing_id || 'N/A'}, status=${listing.parse_status}, id=${data.id}`);
       return { action: 'inserted', id: data.id, status: listing.parse_status };
     }

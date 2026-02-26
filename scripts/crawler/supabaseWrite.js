@@ -54,7 +54,7 @@ export async function upsertListing(row) {
     return { error, data, updated: true }
   }
 
-  const { data, error } = await supabase.from('listings').insert(payload).select('id').single()
+  const { data, error } = await supabase.from('listings').insert({ ...payload, manual: false }).select('id').single()
   return { error, data, updated: false }
 }
 

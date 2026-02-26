@@ -148,6 +148,16 @@
   box-shadow: var(--shadow-sm);
 }
 
+.type-badge.manual-badge {
+  background: #6366f1;
+  color: #fff;
+}
+
+.type-badge.otomatik-badge {
+  background: #64748b;
+  color: #fff;
+}
+
 /* Parse durumu: İşleniyor / Hazır / Hata */
 .parse-status-badge.parse-status-pending { background: #f59e0b; color: #fff; }
 .parse-status-badge.parse-status-ok { background: #10b981; color: #fff; }

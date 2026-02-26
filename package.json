@@ -15,23 +15,34 @@
     "fix:full": "node scripts/fixFullWithoutImages.js",
     "backfill:photos": "node scripts/backfill-photos.mjs",
     "parse:manual": "node scripts/parseManualListings.js",
-    "playwright:install": "playwright install chromium"
+    "playwright:install": "playwright install chromium",
+    "predeploy": "npm run build",
+    "deploy": "gh-pages -d dist",
+    "parse-server": "node server/index.js",
+    "worker": "node scripts/worker.js",
+    "dev:all": "concurrently \"npm run dev\" \"npm run parse-server\" \"npm run worker\""
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.90.1",
     "axios": "^1.13.3",
     "axios-cookiejar-support": "^6.0.5",
     "cheerio": "^1.2.0",
+    "cors": "^2.8.6",
     "dotenv": "^17.2.3",
+    "express": "^5.2.1",
     "lucide-react": "^0.562.0",
+    "puppeteer": "^24.37.5",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
+    "react-router-dom": "^7.13.0",
     "swiper": "^12.0.3",
     "tough-cookie": "^6.0.0",
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.2.1",
+    "concurrently": "^9.2.1",
+    "gh-pages": "^6.3.0",
     "playwright": "^1.57.0",
     "vite": "^5.0.8"
   }

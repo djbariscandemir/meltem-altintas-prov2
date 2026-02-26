@@ -1,6 +1,6 @@
 .add-listing-page {
   padding: var(--spacing-lg);
-  max-width: 560px;
+  max-width: 900px;
   margin: 0 auto;
 }
 
@@ -83,4 +83,23 @@
 .add-listing-form .submit-btn:disabled {
   opacity: 0.7;
   cursor: not-allowed;
+}
+
+.manual-listings-section {
+  margin-top: 32px;
+  padding-top: 24px;
+  border-top: 1px solid var(--color-gray-200, #e5e7eb);
+}
+
+.manual-listings-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--color-gray-900, #111);
+  margin-bottom: 20px;
+}
+
+.manual-listings-loading,
+.manual-listings-empty {
+  font-size: 14px;
+  color: var(--color-gray-600, #555);
 }
